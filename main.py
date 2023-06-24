@@ -34,13 +34,12 @@ def save_note(update: Update, context: CallbackContext) -> None:
         with open("notes.json", "w") as f:
             json.dump(notes, f)
 
-        update.message.reply_text(f"Note {note_number + 1} has been updated.")
+        update.message.reply_text(f"{note_command} Note {note_number + 1} has been updated.")
 
         # Clear the edit_note and note_command from user_data
         del context.user_data["edit_note"]
         del context.user_data["note_command"]
 
-        return
 
     # If it's not an edit, continue with the original save_note code
     command = text.split()[0]  # Extract first word from the message
@@ -106,8 +105,8 @@ def display_notes(update: Update, context: CallbackContext) -> None:
         if note["command"] == command:
             response += f"{count}) Note {count} {command[1:]}\n{note['note']}\n\n"
             keyboard.append([
-                InlineKeyboardButton(text=f"Edit {count}", callback_data=f"edit_{idx}"),
-                InlineKeyboardButton(text=f"Delete {count}", callback_data=f"delete_{idx}")
+                InlineKeyboardButton(text=f"Edit {count}", callback_data=f"edit_{idx}_{count}"),
+                InlineKeyboardButton(text=f"Delete {count}", callback_data=f"delete_{idx}_{count}")
             ])
             count += 1
 
@@ -116,21 +115,21 @@ def display_notes(update: Update, context: CallbackContext) -> None:
         update.message.reply_text(response, reply_markup=reply_markup)
     else:
         update.message.reply_text("No notes found for this command.")
+def should_save_note(update: Update, context: CallbackContext) -> bool:
+    return "edit_note" not in context.user_data
 def handle_callback(update: Update, context: CallbackContext) -> None:
     callback_query = update.callback_query
     callback_data = callback_query.data
-    command, note_number = callback_data.split("_")
+    command, note_number, display_number = callback_data.split("_")
     note_number = int(note_number)
+    display_number = int(display_number)
 
     # Load notes
     with open("notes.json", "r") as f:
         notes = json.load(f)
 
-    # Remove the unnecessary code that calculates note_command and note_number
-    # (code removed)
-
     if command == "edit":
-        callback_query.answer("Please send the updated note text.")
+        callback_query.edit_message_text("Please send the updated note text.")
         context.user_data["edit_note"] = note_number
         context.user_data["note_command"] = notes[note_number]["command"]
     elif command == "delete":
@@ -141,7 +140,7 @@ def handle_callback(update: Update, context: CallbackContext) -> None:
         with open("notes.json", "w") as f:
             json.dump(notes, f)
 
-        callback_query.answer(f"Note {note_number + 1} has been deleted.")
+        callback_query.edit_message_text(f"Note {display_number} has been deleted.")
     else:
         callback_query.answer("Unknown action.")
 def upload_logs(update: Update, context: CallbackContext) -> None:
@@ -159,9 +158,10 @@ def main() -> None:
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("logs", upload_logs))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note))
+    #dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note))
     dispatcher.add_handler(MessageHandler(Filters.command, display_notes))
     dispatcher.add_handler(CallbackQueryHandler(handle_callback))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note, pass_user_data=True, run_async=True))
 
     updater.start_polling()
 
