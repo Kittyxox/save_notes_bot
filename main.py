@@ -39,57 +39,59 @@ def save_note(update: Update, context: CallbackContext) -> None:
         # Clear the edit_note and note_command from user_data
         del context.user_data["edit_note"]
         del context.user_data["note_command"]
-
-
-    # If it's not an edit, continue with the original save_note code
-    command = text.split()[0]  # Extract first word from the message
-    user_id = update.message.from_user.id
-    username = update.message.from_user.username
-
-    sanitized_command = sanitize_command(command)
-
-    if not sanitized_command:
-        update.message.reply_text(
-            "Invalid command format. Commands should contain only lowercase English letters, digits, and underscores.")
+        context.user_data["is_editing"] = False
         return
 
-    note_data = {
-        "user_id": user_id,
-        "username": username,
-        "command": f"/{sanitized_command}",
-        "note": text
-    }
+    # If it's not an edit and the is_editing flag is not set, continue with the original save_note code
+    if not context.user_data.get("is_editing"):
+        command = text.split()[0]  # Extract first word from the message
+        user_id = update.message.from_user.id
+        username = update.message.from_user.username
 
-    if not os.path.exists("notes.json"):
+        sanitized_command = sanitize_command(command)
+
+        if not sanitized_command:
+            update.message.reply_text(
+                "Invalid command format. Commands should contain only lowercase English letters, digits, and underscores.")
+            return
+
+        note_data = {
+            "user_id": user_id,
+            "username": username,
+            "command": f"/{sanitized_command}",
+            "note": text
+        }
+
+        if not os.path.exists("notes.json"):
+            with open("notes.json", "w") as f:
+                json.dump([], f)
+
+        with open("notes.json", "r") as f:
+            notes = json.load(f)
+
+        notes.append(note_data)
+
         with open("notes.json", "w") as f:
-            json.dump([], f)
+            json.dump(notes, f)
 
-    with open("notes.json", "r") as f:
-        notes = json.load(f)
+        update.message.reply_text(f"Note has been saved under {note_data['command']} command.")
 
-    notes.append(note_data)
+        # Update the bot commands
+        bot_commands = [
+            BotCommand(command="start", description="Start the bot"),
+            BotCommand(command="logs", description="Upload logs"),
+        ]
 
-    with open("notes.json", "w") as f:
-        json.dump(notes, f)
+        unique_commands = set()
 
-    update.message.reply_text(f"Note has been saved under {note_data['command']} command.")
+        for note in notes:
+            sanitized_command = sanitize_command(note["command"][1:])
+            if sanitized_command not in unique_commands:
+                bot_commands.append(
+                    BotCommand(command=sanitized_command, description=f"{sanitized_command.capitalize()} Notes"))
+                unique_commands.add(sanitized_command)
 
-    # Update the bot commands
-    bot_commands = [
-        BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="logs", description="Upload logs"),
-    ]
-
-    unique_commands = set()
-
-    for note in notes:
-        sanitized_command = sanitize_command(note["command"][1:])
-        if sanitized_command not in unique_commands:
-            bot_commands.append(
-                BotCommand(command=sanitized_command, description=f"{sanitized_command.capitalize()} Notes"))
-            unique_commands.add(sanitized_command)
-
-    context.bot.set_my_commands(bot_commands)
+        context.bot.set_my_commands(bot_commands)
 
 def display_notes(update: Update, context: CallbackContext) -> None:
     command = update.message.text
@@ -132,6 +134,7 @@ def handle_callback(update: Update, context: CallbackContext) -> None:
         callback_query.edit_message_text("Please send the updated note text.")
         context.user_data["edit_note"] = note_number
         context.user_data["note_command"] = notes[note_number]["command"]
+        context.user_data["is_editing"] = True
     elif command == "delete":
         # Filter notes, removing the note with the matching note_number
         notes = [note for index, note in enumerate(notes) if index != note_number]
