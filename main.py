@@ -6,6 +6,7 @@ from telegram import Update, ForceReply
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
+from telegram.error import BadRequest
 def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     update.message.reply_text(f'Hi, {user.first_name}! Please send me any notes, I will save them.')
@@ -124,7 +125,22 @@ def display_notes(update: Update, context: CallbackContext) -> None:
 
     if response:
         reply_markup = InlineKeyboardMarkup(keyboard)
-        update.message.reply_text(response, reply_markup=reply_markup)
+
+        # Clear previous inline keyboard if exists and if it's different from the new one
+        last_displayed_message_id = context.user_data.get("last_displayed_message_id")
+        if last_displayed_message_id:
+            try:
+                context.bot.edit_message_reply_markup(
+                    chat_id=update.message.chat_id,
+                    message_id=last_displayed_message_id,
+                    reply_markup=None
+                )
+            except BadRequest:
+                pass
+
+        # Send the new message with the new inline keyboard and store its message ID
+        sent_message = update.message.reply_text(response, reply_markup=reply_markup)
+        context.user_data["last_displayed_message_id"] = sent_message.message_id
     else:
         update.message.reply_text("No notes found for this command.")
 def should_save_note(update: Update, context: CallbackContext) -> bool:
