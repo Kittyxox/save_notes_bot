@@ -39,7 +39,10 @@ def save_note(update: Update, context: CallbackContext) -> None:
         with open("notes.json", "w") as f:
             json.dump(notes, f)
 
-        update.message.reply_text(f"{note_command} Note {note_number + 1} has been updated.")
+        # Get the display number for the updated note
+        display_number = sum(1 for note in notes[:note_number + 1] if note["command"] == note_command)
+
+        update.message.reply_text(f"{note_command} Note {display_number} has been updated.")
 
         # Clear the edit_note and note_command from user_data
         del context.user_data["edit_note"]
