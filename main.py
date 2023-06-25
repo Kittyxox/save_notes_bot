@@ -11,7 +11,14 @@ from telegram.error import BadRequest
 from telegram import ParseMode
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+AUTHORIZED_USER_IDS = [5651418113, 2131984686]
+def is_user_authorized(user_id: int) -> bool:
+    return user_id in AUTHORIZED_USER_IDS
 def start(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
+
     user = update.effective_user
     update.message.reply_text(f'Hi, {user.first_name}! Please send me any notes, I will save them.')
 
@@ -20,6 +27,9 @@ def sanitize_command(command: str) -> str:
     command = re.sub(r"[^a-z0-9_]", "", command)
     return command
 def save_note(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
     text = update.message.text
 
     # Check if we are editing an existing note
@@ -106,6 +116,9 @@ def save_note(update: Update, context: CallbackContext) -> None:
         context.bot.set_my_commands(bot_commands)
 
 def display_notes(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
     command = update.message.text
     if command == "/clearall":
         return
@@ -181,12 +194,18 @@ def handle_callback(update: Update, context: CallbackContext) -> None:
     else:
         callback_query.answer("Unknown action.")
 def upload_logs(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
     if os.path.exists("notes.json"):
         with open("notes.json", "rb") as f:
             update.message.reply_document(document=f, filename="notes.json")
     else:
         update.message.reply_text("No logs found.")
 def clear_all(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
     keyboard = [
         [
             InlineKeyboardButton(text="Yes", callback_data="confirm_clear_all_yes"),
