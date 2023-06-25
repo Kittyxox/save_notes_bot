@@ -2,7 +2,9 @@ import json
 import os
 import logging
 import re
-from telegram import BotCommand
+import shutil
+from datetime import datetime
+from telegram import BotCommand, CallbackQuery
 from telegram import Update, ForceReply
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -26,6 +28,27 @@ def sanitize_command(command: str) -> str:
     command = command.lower()
     command = re.sub(r"[^a-z0-9_]", "", command)
     return command
+def send_available_commands_message(update: Update, context: CallbackContext) -> None:
+    bot_commands = context.bot.get_my_commands()
+
+    available_commands_text = "Available commands:\n\n"
+    for command in bot_commands:
+        available_commands_text += f"/{command.command} - {command.description}\n"
+
+    update.message.reply_text(available_commands_text)
+def send_available_commands_callback(callback_query: CallbackQuery, context: CallbackContext) -> None:
+    bot_commands = context.bot.get_my_commands()
+
+    available_commands_text = "Available commands:\n\n"
+    for command in bot_commands:
+        available_commands_text += f"/{command.command} - {command.description}\n"
+
+    callback_query.message.reply_text(available_commands_text)
+
+def backup_notes() -> None:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = f"notes_backup_{timestamp}.json"
+    shutil.copy("notes.json", backup_file)
 def save_note(update: Update, context: CallbackContext) -> None:
     if not is_user_authorized(update.effective_user.id):
         update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
@@ -39,6 +62,7 @@ def save_note(update: Update, context: CallbackContext) -> None:
 
         with open("notes.json", "r") as f:
             notes = json.load(f)
+        backup_notes()
 
         # Update the note text
         for idx, note in enumerate(notes):
@@ -114,6 +138,9 @@ def save_note(update: Update, context: CallbackContext) -> None:
                 unique_commands.add(sanitized_command)
 
         context.bot.set_my_commands(bot_commands)
+        send_available_commands_message(update, context)
+
+
 
 def display_notes(update: Update, context: CallbackContext) -> None:
     if not is_user_authorized(update.effective_user.id):
@@ -185,12 +212,35 @@ def handle_callback(update: Update, context: CallbackContext) -> None:
     elif command == "delete":
         # Filter notes, removing the note with the matching note_number
         notes = [note for index, note in enumerate(notes) if index != note_number]
+        backup_notes()
 
         # Save updated notes
         with open("notes.json", "w") as f:
             json.dump(notes, f)
 
         callback_query.edit_message_text(f"Note {display_number} has been deleted.")
+
+        # Update bot commands
+        bot_commands = [
+            BotCommand(command="start", description="Start the bot"),
+            BotCommand(command="logs", description="Upload logs"),
+            BotCommand(command="clearall", description="Clear all notes"),
+        ]
+
+        unique_commands = set()
+
+        for note in notes:
+            sanitized_command = sanitize_command(note["command"][1:])
+            if sanitized_command not in unique_commands:
+                bot_commands.append(
+                    BotCommand(command=sanitized_command, description=f"{sanitized_command.capitalize()} Notes"))
+                unique_commands.add(sanitized_command)
+
+        context.bot.set_my_commands(bot_commands)
+
+        # Send available commands
+        send_available_commands_callback(callback_query, context)
+
     else:
         callback_query.answer("Unknown action.")
 def upload_logs(update: Update, context: CallbackContext) -> None:
@@ -221,6 +271,7 @@ def confirm_clear_all(update: Update, context: CallbackContext) -> None:
     callback_data = callback_query.data
 
     if callback_data == "confirm_clear_all_yes":
+        backup_notes()
         if os.path.exists("notes.json"):
             os.remove("notes.json")
             update.callback_query.answer()
