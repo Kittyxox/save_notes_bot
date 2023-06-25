@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 import re
 from telegram import BotCommand
 from telegram import Update, ForceReply
@@ -7,6 +8,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 from telegram.error import BadRequest
+from telegram import ParseMode
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     update.message.reply_text(f'Hi, {user.first_name}! Please send me any notes, I will save them.')
@@ -116,7 +120,8 @@ def display_notes(update: Update, context: CallbackContext) -> None:
 
     for idx, note in enumerate(notes):
         if note["command"] == command:
-            response += f"{count}) Note {count} {command[1:]}\n{note['note']}\n\n"
+            formatted_note = note['note'].replace('\n', '\n   ')
+            response += f"📦 Note {count}:\n┏━━\n┃ {formatted_note}\n┗━━━━━━━━━━━━\n"
             keyboard.append([
                 InlineKeyboardButton(text=f"Edit {count}", callback_data=f"edit_{idx}_{count}"),
                 InlineKeyboardButton(text=f"Delete {count}", callback_data=f"delete_{idx}_{count}")
@@ -227,7 +232,11 @@ def main() -> None:
     dispatcher.add_handler(CallbackQueryHandler(handle_callback))
 
     updater.start_polling()
+    logger.info("Bot started!")
 
     updater.idle()
+    logger.info("Bot stopped!")
+
+
 if __name__ == "__main__":
     main()
