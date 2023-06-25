@@ -1,0 +1,25 @@
+2023-06-25 17:55:12,591 - __main__ - INFO - Bot started
+2023-06-25 17:55:12,591 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 17:55:33,304 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 17:55:33,304 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2023-06-25 17:55:34,268 - __main__ - INFO - Bot exited
+2023-06-25 17:57:58,388 - __main__ - INFO - Bot started
+2023-06-25 17:57:58,388 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 18:02:04,005 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 18:02:04,005 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2023-06-25 18:02:05,304 - __main__ - INFO - Bot started
+2023-06-25 18:02:05,304 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 18:25:26,915 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 18:25:26,915 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2023-06-25 18:25:27,865 - __main__ - INFO - Bot started
+2023-06-25 18:25:27,865 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 18:30:25,788 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 18:30:25,789 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2023-06-25 18:30:27,278 - __main__ - INFO - Bot started
+2023-06-25 18:30:27,279 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 18:32:13,749 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 18:32:13,750 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2023-06-25 18:32:14,779 - __main__ - INFO - Bot started
+2023-06-25 18:32:14,779 - apscheduler.scheduler - INFO - Scheduler started
+2023-06-25 18:32:24,653 - telegram.ext.updater - INFO - Received signal 2 (SIGINT), stopping...
+2023-06-25 18:32:24,653 - apscheduler.scheduler - INFO - Scheduler has been shut down

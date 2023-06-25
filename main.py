@@ -3,6 +3,8 @@ import os
 import logging
 import re
 import shutil
+import traceback
+import sys
 from datetime import datetime
 from telegram import BotCommand, CallbackQuery
 from telegram import Update, ForceReply
@@ -11,11 +13,40 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler
 from telegram.error import BadRequest
 from telegram import ParseMode
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+from telegram import InputFile
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs_bot.txt'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 logger = logging.getLogger(__name__)
+
+# Error handler function
+def error_handler(update: Update, context: CallbackContext) -> None:
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb = ''.join(tb_list)
+    update.message.reply_text(f"An error occurred: ```{tb}```", parse_mode=ParseMode.MARKDOWN)
 AUTHORIZED_USER_IDS = [5651418113, 2131984686]
+def bot_logs(update: Update, context: CallbackContext) -> None:
+    if not is_user_authorized(update.effective_user.id):
+        update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
+        return
+
+    if not os.path.exists('logs_bot.txt'):
+        update.message.reply_text("No logs found.")
+        return
+
+    with open('logs_bot.txt', 'rb') as f:
+        update.message.reply_document(document=InputFile(f), filename='logs_bot.txt')
 def is_user_authorized(user_id: int) -> bool:
     return user_id in AUTHORIZED_USER_IDS
+
 def start(update: Update, context: CallbackContext) -> None:
     if not is_user_authorized(update.effective_user.id):
         update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
@@ -126,6 +157,7 @@ def save_note(update: Update, context: CallbackContext) -> None:
             BotCommand(command="start", description="Start the bot"),
             BotCommand(command="logs", description="Upload logs"),
             BotCommand(command="clearall", description="Clear all notes"),
+            BotCommand(command="bot_logs", description="Upload bot logs"),
         ]
 
         unique_commands = set()
@@ -149,7 +181,9 @@ def display_notes(update: Update, context: CallbackContext) -> None:
     command = update.message.text
     if command == "/clearall":
         return
-
+    if command == "/bot_logs":
+        bot_logs(update, context)  # Call the bot_logs function to upload the logs_bot.txt file
+        return
     if not os.path.exists("notes.json"):
         update.message.reply_text("There are no notes in this chat.")
         return
@@ -163,7 +197,7 @@ def display_notes(update: Update, context: CallbackContext) -> None:
 
     for idx, note in enumerate(notes):
         if note["command"] == command:
-            formatted_note = note['note'].replace('\n', '\n   ')
+            formatted_note = note['note'].replace('\n', '\n┃ ')
             response += f"📦 Note {count}:\n┏━━\n┃ {formatted_note}\n┗━━━━━━━━━━━━\n"
             keyboard.append([
                 InlineKeyboardButton(text=f"Edit {count}", callback_data=f"edit_{idx}_{count}"),
@@ -225,6 +259,7 @@ def handle_callback(update: Update, context: CallbackContext) -> None:
             BotCommand(command="start", description="Start the bot"),
             BotCommand(command="logs", description="Upload logs"),
             BotCommand(command="clearall", description="Clear all notes"),
+            BotCommand(command="bot_logs", description="Upload bot logs"),
         ]
 
         unique_commands = set()
@@ -281,6 +316,7 @@ def confirm_clear_all(update: Update, context: CallbackContext) -> None:
                 BotCommand(command="start", description="Start the bot"),
                 BotCommand(command="logs", description="Upload logs"),
                 BotCommand(command="clearall", description="Clear all notes"),
+                BotCommand(command="bot_logs", description="Upload bot logs"),
             ]
             context.bot.set_my_commands(bot_commands)
 
@@ -303,12 +339,20 @@ def main() -> None:
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note, pass_user_data=True, run_async=True))
     dispatcher.add_handler(MessageHandler(Filters.command, display_notes))
     dispatcher.add_handler(CallbackQueryHandler(handle_callback))
+    bot_logs_handler = CommandHandler('bot_logs', bot_logs)
+    dispatcher.add_handler(bot_logs_handler)
+    dispatcher.add_error_handler(error_handler)
+    logger.info("Bot started")
 
-    updater.start_polling()
-    logger.info("Bot started!")
-
-    updater.idle()
-    logger.info("Bot stopped!")
+    try:
+        updater.start_polling()
+        updater.idle()
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+    except Exception as e:
+        logger.exception("Bot stopped due to an unhandled exception")
+    finally:
+        logger.info("Bot exited")
 
 
 if __name__ == "__main__":
