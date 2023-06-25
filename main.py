@@ -44,7 +44,10 @@ def save_note(update: Update, context: CallbackContext) -> None:
 
     # If it's not an edit and the is_editing flag is not set, continue with the original save_note code
     if not context.user_data.get("is_editing"):
-        command = text.split()[0]  # Extract first word from the message
+        command = text.split()[0]
+        if command == "/clearall":
+            return
+        # Extract first word from the message
         user_id = update.message.from_user.id
         username = update.message.from_user.username
 
@@ -80,6 +83,7 @@ def save_note(update: Update, context: CallbackContext) -> None:
         bot_commands = [
             BotCommand(command="start", description="Start the bot"),
             BotCommand(command="logs", description="Upload logs"),
+            BotCommand(command="clearall", description="Clear all notes"),
         ]
 
         unique_commands = set()
@@ -95,6 +99,12 @@ def save_note(update: Update, context: CallbackContext) -> None:
 
 def display_notes(update: Update, context: CallbackContext) -> None:
     command = update.message.text
+    if command == "/clearall":
+        return
+
+    if not os.path.exists("notes.json"):
+        update.message.reply_text("There are no notes in this chat.")
+        return
 
     with open("notes.json", "r") as f:
         notes = json.load(f)
@@ -152,6 +162,39 @@ def upload_logs(update: Update, context: CallbackContext) -> None:
             update.message.reply_document(document=f, filename="notes.json")
     else:
         update.message.reply_text("No logs found.")
+def clear_all(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [
+            InlineKeyboardButton(text="Yes", callback_data="confirm_clear_all_yes"),
+            InlineKeyboardButton(text="No", callback_data="confirm_clear_all_no"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text("Are you sure you want to clear all notes?", reply_markup=reply_markup)
+
+
+def confirm_clear_all(update: Update, context: CallbackContext) -> None:
+    callback_query = update.callback_query
+    callback_data = callback_query.data
+
+    if callback_data == "confirm_clear_all_yes":
+        if os.path.exists("notes.json"):
+            os.remove("notes.json")
+            update.callback_query.answer()
+
+            # Update the bot commands
+            bot_commands = [
+                BotCommand(command="start", description="Start the bot"),
+                BotCommand(command="logs", description="Upload logs"),
+                BotCommand(command="clearall", description="Clear all notes"),
+            ]
+            context.bot.set_my_commands(bot_commands)
+
+            callback_query.edit_message_text("All notes have been cleared.")
+        else:
+            callback_query.edit_message_text("There are no notes to clear.")
+    else:
+        callback_query.edit_message_text("Clear all notes has been canceled.")
 def main() -> None:
     TOKEN = "6187304624:AAG3of6VEyzi3AeyDbmzFiCom9wRfZPs7OA"
 
@@ -161,10 +204,11 @@ def main() -> None:
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("logs", upload_logs))
-    #dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note))
+    dispatcher.add_handler(CommandHandler("clearall", clear_all))
+    dispatcher.add_handler(CallbackQueryHandler(confirm_clear_all, pattern="^confirm_clear_all_"))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note, pass_user_data=True, run_async=True))
     dispatcher.add_handler(MessageHandler(Filters.command, display_notes))
     dispatcher.add_handler(CallbackQueryHandler(handle_callback))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, save_note, pass_user_data=True, run_async=True))
 
     updater.start_polling()
 
