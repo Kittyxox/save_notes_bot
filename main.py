@@ -32,7 +32,7 @@ def error_handler(update: Update, context: CallbackContext) -> None:
     tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
     tb = ''.join(tb_list)
     update.message.reply_text(f"An error occurred: ```{tb}```", parse_mode=ParseMode.MARKDOWN)
-AUTHORIZED_USER_IDS = [5651418113, 2131984686]
+AUTHORIZED_USER_IDS = [,]
 def bot_logs(update: Update, context: CallbackContext) -> None:
     if not is_user_authorized(update.effective_user.id):
         update.message.reply_text("You don't have access to this bot. Please contact @TheCodingWizard.")
