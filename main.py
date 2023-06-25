@@ -326,7 +326,7 @@ def confirm_clear_all(update: Update, context: CallbackContext) -> None:
     else:
         callback_query.edit_message_text("Clear all notes has been canceled.")
 def main() -> None:
-    TOKEN = "6187304624:AAG3of6VEyzi3AeyDbmzFiCom9wRfZPs7OA"
+    TOKEN = "Replace with your token"
 
     updater = Updater(TOKEN)
 
